@@ -24,9 +24,9 @@ import requests
 
 # ----------------- USER CONFIG -----------------
 # Rediff credentials / window
-DOMAIN          = "ubisl.co.in"
-USER_EMAIL      = " siem@ubisl.co.in"
-PASSWORD_PLAIN  = "U2VjdXJlQDIwMjY="                # plain password (script will base64 it)
+DOMAIN          = "xxxxxxx.co.in"
+USER_EMAIL      = " xxxxxx.co.in"
+PASSWORD_PLAIN  = "xxxxxxxxxxxxxxx"                # plain password (script will base64 it)
 WINDOW_MINUTES  = 5
 API_URL         = "https://cl-logs.rediffmailpro.com/logs/get"
 REQUEST_TIMEOUT = 30
