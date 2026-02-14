@@ -82,5 +82,12 @@
         "product": "Zoho Mail",
         "deviceType": "Email Security",
         "description": "Exports Zoho Mail logs to syslog with optional UDP source IP spoofing using Scapy."
+    },
+    {
+        "file": "Sophos_Central.py",
+        "vendor": "Sophos",
+        "product": "Sopho Central",
+        "deviceType": "Central Management",
+        "description": "Pull Logs from your sophos central and send to syslog server"
     }
 ]
