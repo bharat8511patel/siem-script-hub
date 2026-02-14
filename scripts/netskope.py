@@ -5,7 +5,7 @@ import time
 import os
 
 # Bharat v3.0.1 (429 Safe Version)
-TOKEN = "cmJhY3YzOnJDWDJIN1UweldfUjItUE12bmVRVg=="
+TOKEN = "xxxxxxxxxxxxxxxxxxxxxxxxxxx"
 BASE_URL = "https://dtdcin.goskope.com/api/v2/events/data"
 ENDPOINTS = ["alert", "application", "audit"]
 SYSLOG_SERVER = "10.10.23.188"
