@@ -6,8 +6,8 @@ import json
 from datetime import datetime, timezone
 
 # ===== CONFIGURATION =====
-TOKEN = "eyJraWQiOiJhcC1zb3V0aGVhc3QtMS1wcm9kLTAiLCJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJzZXJ2aWNldXNlci0xMjFhM2NmMy02NjdmLTRhM2YtYjZiZS04ODYwNTdmMmIzZjdAbWdtdC01NC5zZW50aW5lbG9uZS5uZXQiLCJpc3MiOiJhdXRobi1hcC1zb3V0aGVhc3QtMS1wcm9kIiwiZGVwbG95bWVudF9pZCI6IjU0IiwidHlwZSI6InVzZXIiLCJleHAiOjE3NTMyNjM0MjIsImlhdCI6MTc1MDY3MTU5NiwianRpIjoiNzBjZTBlMzktYzY2Ni00YmUxLTk5MWQtOGI4ZGNjYzIxMWFmIn0.7mIArbR-C98s8JXYXLI711vy2iEcih3Hgc6nruRNm7ltlQhTKSxcwEYhQzJXsy0XaDHy2vNMIhNhxUISxyvkvQ"
-BASE_URL = "https://apse1-2001.sentinelone.net/web/api/v2.1"
+TOKEN = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+BASE_URL = "https://xxxxxxxxxxx.sentinelone.net/web/api/v2.1"
 ENDPOINTS = {
     "activities": "activities",
     "threats": "threats",
