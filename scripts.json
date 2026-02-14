@@ -2,7 +2,7 @@
     {
         "file": "Final_Scapy_cloudwatch.txt",
         "vendor": "AWS",
-        "product": "CloudWatch",
+        "product": "CloudWatch Scapy",
         "deviceType": "Cloud/SIEM",
         "description": "Fetches AWS CloudWatch and forwards to syslog server with spoofed source IP using Scapy."
     },
