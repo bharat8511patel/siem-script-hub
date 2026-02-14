@@ -22,7 +22,7 @@ from scapy.all import IP, UDP, Raw, send
 
 # ================= CONFIG =================
 API_URL = "https://app.techowlshield.com/api/alert"
-API_KEY = os.getenv("TECHOWL_API_KEY", "jHTAIavdufpO2acSIAU5FJIOIneLb1wX")
+API_KEY = os.getenv("TECHOWL_API_KEY", "XXXXXXXXXXXXXXXXXXXXXXXX")
 
 # Spoofed source IP that will appear in FortiSIEM logs
 SPOOFED_SRC_IP = "12.12.12.12"
