@@ -10,13 +10,13 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CHECKPOINT_FILE = os.path.join(SCRIPT_DIR, "last_pull_timestamp.txt")
 
 # AWS Config
-LOG_GROUP_NAME = "VPC-Logs"
+LOG_GROUP_NAME = "VPC-Logs" # give Group name All log streams will be featched 
 REGION = "eu-north-1"
-ACCOUNT_NAME = "dontrip"
+ACCOUNT_NAME = "dontrip" # make sure we required Account Nmae not Account Number
 PH_CUST_ID = 2209
 
 # Syslog Config
-SYSLOG_HOST = "192.168.10.233"
+SYSLOG_HOST = "192.168.10.233" # syslog server IP
 SYSLOG_PORT = 514
 SYSLOG_PROTO = "udp"
 
