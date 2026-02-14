@@ -2,16 +2,16 @@
     {
         "file": "Final_Scapy_cloudwatch.txt",
         "vendor": "AWS",
-        "product": "CloudWatch VPC Logs",
+        "product": "CloudWatch",
         "deviceType": "Cloud/SIEM",
-        "description": "Fetches AWS CloudWatch VPC logs and forwards to syslog server with spoofed source IP using Scapy."
+        "description": "Fetches AWS CloudWatch and forwards to syslog server with spoofed source IP using Scapy."
     },
     {
         "file": "Cloudwatch.txt",
         "vendor": "AWS",
-        "product": "CloudWatch VPC Logs (TCS)",
+        "product": "CloudWatch",
         "deviceType": "Cloud/SIEM",
-        "description": "Fetches AWS CloudWatch VPC logs (TCS instance) and forwards to syslog server."
+        "description": "Fetches AWS CloudWatch logs and forwards to syslog server."
     },
     {
         "file": "gsuit_Final.py",
@@ -56,14 +56,14 @@
         "description": "Collects SentinelOne activities, threats, and cloud-detection alerts and sends to syslog."
     },
     {
-        "file": "shield_Arvind.py",
+        "file": "shield.py",
         "vendor": "TechOwl",
         "product": "TechOwlShield",
         "deviceType": "Endpoint Security",
         "description": "Fetches TechOwlShield security alerts and forwards to syslog with spoofed source IP using Scapy."
     },
     {
-        "file": "UPDATED_TREND.py",
+        "file": "TREND_Vision.py",
         "vendor": "Trend Micro",
         "product": "Trend Vision One",
         "deviceType": "Endpoint Security/XDR",
