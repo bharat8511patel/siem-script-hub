@@ -7,7 +7,7 @@
         "description": "Fetches AWS CloudWatch VPC logs and forwards to syslog server with spoofed source IP using Scapy."
     },
     {
-        "file": "TCS_Cloudwatch.txt",
+        "file": "Cloudwatch.txt",
         "vendor": "AWS",
         "product": "CloudWatch VPC Logs (TCS)",
         "deviceType": "Cloud/SIEM",
