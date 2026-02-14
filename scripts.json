@@ -89,5 +89,12 @@
         "product": "Sopho Central",
         "deviceType": "Central Management",
         "description": "Pull Logs from your sophos central and send to syslog server"
+    },
+    {
+        "file": "CATO_SASE.py",
+        "vendor": "CATO Networks",
+        "product": "CATO SASE",
+        "deviceType": "Cloud/Network Security",
+        "description": "Pull logs from CATO SASE and sent to syslog server"
     }
 ]
