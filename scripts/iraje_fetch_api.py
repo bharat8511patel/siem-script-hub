@@ -33,8 +33,8 @@ from scapy.all import IP, UDP, Raw, send  # root required
 # ---------------- CONFIG ----------------
 API_BASE = "https://10.1.10.92"     # <-- replace with your Iraje URL
 API_PATH = "/api/irajeevents"
-USERNAME = "siemirajelog@ahm.lambdacro.com"            # <-- replace
-PASSWORD = "L@mbda@#2025@#"               # <-- replace
+USERNAME = "sixxxxxxxog@xxx.lxxxxxxxxo.com"            # <-- replace
+PASSWORD = "xxxxxxxxxxxx"               # <-- replace
 
 VERIFY_SSL = False
 FETCH_SECONDS = 300                      # last 5 mins
