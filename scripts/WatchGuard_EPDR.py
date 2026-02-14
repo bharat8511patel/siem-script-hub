@@ -27,13 +27,13 @@ DEFAULT_CLIENT_NAME = "WatchGuard-Client"          # Default/fallback name
 API_BASE   = "https://api.jpn.cloud.watchguard.com"
 AUTH_URL   = f"{API_BASE}/oauth/token"
 
-ACCOUNT_ID = "WGC-3-0a8a97f8c8fa451eb7b9"
-ACCESS_ID  = "c3958d3e659cebf9_r_id"
-ACCESS_PW  = "F'sL=3d3b0J0"
-API_KEY    = "u4yVMU29P7biQravxrBMZhjpxe1c/OW7mBb30y/T" # ← CHANGE PER CLIENT
+ACCOUNT_ID = "WGC-3-xxxxxxxxxxxxxxxx"
+ACCESS_ID  = "xxxxxxxxxxxx_r_id"
+ACCESS_PW  = "xxxxxxxxxxxx"
+API_KEY    = "xxxxxxxxxxxxxxxxxxxxxxxxxxx" # ← CHANGE PER CLIENT
 
 # ========= SYSLOG CONFIG =========
-SYSLOG_SERVER = "192.168.10.233"   # Syslog server IP or hostname
+SYSLOG_SERVER = "syslog server IP"   # Syslog server IP or hostname
 SYSLOG_PORT   = 514                # Syslog port (usually 514 for UDP)
 SYSLOG_PROTOCOL = "UDP"            # Currently only UDP is supported for spoofing
 
