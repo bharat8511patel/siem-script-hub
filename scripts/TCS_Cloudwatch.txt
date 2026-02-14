@@ -1,0 +1,251 @@
+import boto3
+import json
+import sys
+import os
+import socket
+from datetime import datetime, timezone, timedelta
+
+# === Checkpoint location: always next to this script ===
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CHECKPOINT_FILE = os.path.join(SCRIPT_DIR, "last_pull_timestamp.txt")
+
+# AWS Config
+LOG_GROUP_NAME = "VPC-Logs"
+REGION = "eu-north-1"
+ACCOUNT_NAME = "dontrip"
+PH_CUST_ID = 2209
+
+# Syslog Config
+SYSLOG_HOST = "192.168.10.233"
+SYSLOG_PORT = 514
+SYSLOG_PROTO = "udp"
+
+# Pull Config
+INITIAL_PULL_MINUTES = 10
+
+def get_client():
+    return boto3.client(
+        "logs",
+        region_name=REGION,
+        aws_access_key_id="YOUR_AWS_ACCESS_KEY_ID_HERE",
+        aws_secret_access_key="YOUR_AWS_SECRET_ACCESS_KEY_HERE",
+    )
+
+def format_syslog_message(event_message, stream_name, group_name):
+    payload = {
+        "accountName": ACCOUNT_NAME,
+        "awsRegion": REGION,
+        "groupName": group_name,
+        "phCustId": PH_CUST_ID,
+        "reptDevIpAddr": SYSLOG_HOST,
+        "reptDevName": "vpc-log-collector",
+        "streamName": stream_name,
+    }
+    if isinstance(event_message, dict):
+        payload.update(event_message)
+    else:
+        payload["raw_event"] = event_message
+
+    json_payload = json.dumps(payload, separators=(",", ":"))
+    return f"<134>[AWS_CLOUDWATCH_EVENT_DATA] = {json_payload}\n"
+
+def send_syslog(message):
+    """Send syslog message using normal UDP socket"""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.sendto(message.encode("utf-8"), (SYSLOG_HOST, SYSLOG_PORT))
+        sock.close()
+    except Exception as e:
+        print(f"[SYSLOG SEND ERROR] {e}")
+
+def load_checkpoint():
+    if not os.path.exists(CHECKPOINT_FILE):
+        return None
+
+    with open(CHECKPOINT_FILE, "r") as f:
+        ts = f.read().strip()
+
+    if not ts:
+        return None
+
+    # Handle common ISO formats including timezone
+    formats_with_tz = [
+        "%Y-%m-%dT%H:%M:%S%z",        # 2026-02-13T09:30:04+0000
+        "%Y-%m-%dT%H:%M:%S.%f%z",     # with microseconds
+        "%Y-%m-%dT%H:%M:%SZ",         # 2026-02-13T09:30:04Z
+        "%Y-%m-%dT%H:%M:%S.%fZ",
+        "%Y-%m-%d %H:%M:%S%z",
+    ]
+
+    for fmt in formats_with_tz:
+        try:
+            dt = datetime.strptime(ts, fmt)
+            # Make sure it's timezone-aware
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except ValueError:
+            continue
+
+    # Fallback: no timezone → assume UTC
+    formats_no_tz = [
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%Y-%m-%d %H:%M:%S",
+    ]
+
+    for fmt in formats_no_tz:
+        try:
+            dt = datetime.strptime(ts, fmt)
+            return dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+
+    print(f"Warning: Could not parse checkpoint timestamp: '{ts}'")
+    return None
+
+def save_checkpoint(dt):
+    # Always save in clean ISO format with Z (UTC)
+    utc_dt = dt.astimezone(timezone.utc)
+    timestamp_str = utc_dt.isoformat().replace("+00:00", "Z")
+    with open(CHECKPOINT_FILE, "w") as f:
+        f.write(timestamp_str)
+    print(f"Checkpoint saved → {timestamp_str}  (file: {CHECKPOINT_FILE})")
+
+def list_streams():
+    client = get_client()
+    print(f"Log streams in: {LOG_GROUP_NAME}")
+    print("=" * 80)
+    params = {"logGroupName": LOG_GROUP_NAME, "orderBy": "LastEventTime", "descending": True}
+    total = 0
+    while True:
+        response = client.describe_log_streams(**params)
+        for stream in response.get("logStreams", []):
+            total += 1
+            name = stream["logStreamName"]
+            last = stream.get("lastEventTimestamp")
+            last_str = datetime.fromtimestamp(last/1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC") if last else "N/A"
+            bytes_str = stream.get("storedBytes", 0)
+            print(f"{total:4}. {name:50}  Last: {last_str}  Bytes: {bytes_str:,}")
+        if "nextToken" not in response:
+            break
+        params["nextToken"] = response["nextToken"]
+    print(f"\nTotal streams: {total}")
+
+def parse_time(time_str):
+    formats = [
+        "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d",
+        "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S%z",
+    ]
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(time_str, fmt)
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt
+        except ValueError:
+            continue
+    raise ValueError(f"Invalid time format: '{time_str}'")
+
+def pull_and_save(start_str=None, end_str=None):
+    client = get_client()
+    now = datetime.now(timezone.utc)
+
+    if start_str and end_str:
+        start_dt = parse_time(start_str)
+        end_dt = parse_time(end_str)
+        mode = "manual"
+    elif start_str:
+        start_dt = parse_time(start_str)
+        end_dt = now
+        mode = "manual"
+    else:
+        last_ts = load_checkpoint()
+        start_dt = last_ts if last_ts else (now - timedelta(minutes=INITIAL_PULL_MINUTES))
+        end_dt = now
+        mode = "resume" if last_ts else "initial"
+
+    start_ms = int(start_dt.timestamp() * 1000)
+    end_ms   = int(end_dt.timestamp() * 1000)
+
+    print(f"[{mode.upper()}] Pulling logs")
+    print(f"Log group     : {LOG_GROUP_NAME}")
+    print(f"Time range    : {start_dt} → {end_dt}")
+    print(f"Syslog target : {SYSLOG_HOST}:{SYSLOG_PORT} ({SYSLOG_PROTO.upper()})")
+    print(f"Checkpoint    : {CHECKPOINT_FILE}")
+    print("-" * 70)
+
+    params = {
+        "logGroupName": LOG_GROUP_NAME,
+        "startTime": start_ms,
+        "endTime": end_ms,
+        "interleaved": True,
+    }
+
+    total = sent = failed = 0
+
+    while True:
+        resp = client.filter_log_events(**params)
+        for event in resp.get("events", []):
+            total += 1
+            stream = event["logStreamName"]
+            msg = event["message"].strip()
+
+            try:
+                parsed = json.loads(msg)
+            except (json.JSONDecodeError, TypeError):
+                parsed = msg
+
+            syslog_line = format_syslog_message(parsed, stream, LOG_GROUP_NAME)
+
+            try:
+                send_syslog(syslog_line)
+                sent += 1
+            except:
+                failed += 1
+
+        if "nextToken" not in resp:
+            break
+        params["nextToken"] = resp["nextToken"]
+
+    print(f"\nEvents fetched : {total}")
+    print(f"Sent to syslog : {sent}")
+    if failed:
+        print(f"Failed to send : {failed}")
+
+    save_checkpoint(end_dt)
+
+def print_usage():
+    print("Usage:")
+    print("  python bharat.py                          → auto pull (resume or last 10 min)")
+    print('  python bharat.py "2025-02-12 04:00"       → from time to now')
+    print('  python bharat.py "2025-02-12 04:00" "2025-02-12 05:00" → between times')
+    print("  python bharat.py streams                   → list log streams")
+    print("  python bharat.py reset                     → delete checkpoint")
+    print()
+    print(f"Checkpoint file: {CHECKPOINT_FILE}")
+
+def reset_checkpoint():
+    if os.path.exists(CHECKPOINT_FILE):
+        os.remove(CHECKPOINT_FILE)
+        print(f"Checkpoint deleted: {CHECKPOINT_FILE}")
+    else:
+        print("No checkpoint found.")
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        arg = sys.argv[1].lower()
+        if arg == "streams":
+            list_streams()
+        elif arg == "reset":
+            reset_checkpoint()
+        elif arg in ("-h", "--help", "help"):
+            print_usage()
+        elif len(sys.argv) == 3:
+            pull_and_save(sys.argv[1], sys.argv[2])
+        elif len(sys.argv) == 2:
+            pull_and_save(sys.argv[1])
+        else:
+            print_usage()
+    else:
+        pull_and_save()

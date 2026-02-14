@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIEM Script Hub</title>
+    <meta name="description" content="Open-source SIEM integration scripts for log collection, syslog forwarding, and security event aggregation.">
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-tertiary: #1a2332;
+            --border-color: #1e2d3d;
+            --border-glow: rgba(0,240,255,0.2);
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --neon-cyan: #00f0ff;
+            --neon-green: #39ff14;
+            --neon-purple: #bf40ff;
+            --neon-orange: #ff6b35;
+            --neon-pink: #ff2d78;
+            --card-radius: 12px;
+            --font-body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --font-mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(circle at 1px 1px, rgba(0,240,255,0.03) 1px, transparent 0);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body > * { position: relative; z-index: 1; }
+
+        /* ========== HERO ========== */
+        .hero {
+            text-align: center;
+            padding: 3rem 1.5rem 2.5rem;
+            background: linear-gradient(180deg, #0d1525 0%, var(--bg-primary) 100%);
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .hero h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            color: var(--neon-cyan);
+            text-shadow: 0 0 20px rgba(0,240,255,0.3), 0 0 60px rgba(0,240,255,0.1);
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        .glitch { animation: glitch-skew 8s infinite linear alternate-reverse; }
+
+        .glitch::before,
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .glitch::before {
+            color: var(--neon-cyan);
+            clip-path: inset(0 0 85% 0);
+            animation: glitch-top 4s infinite linear alternate-reverse;
+        }
+
+        .glitch::after {
+            color: var(--neon-purple);
+            clip-path: inset(85% 0 0 0);
+            animation: glitch-bottom 3.5s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-skew {
+            0%, 95% { transform: skew(0deg); }
+            96% { transform: skew(0.5deg); }
+            97% { transform: skew(-0.3deg); }
+            98% { transform: skew(0.2deg); }
+            100% { transform: skew(0deg); }
+        }
+
+        @keyframes glitch-top {
+            0%, 90% { transform: translate(0); }
+            92% { transform: translate(2px, -1px); }
+            94% { transform: translate(-2px, 1px); }
+            96% { transform: translate(1px, 0); }
+            100% { transform: translate(0); }
+        }
+
+        @keyframes glitch-bottom {
+            0%, 88% { transform: translate(0); }
+            90% { transform: translate(-1px, 1px); }
+            93% { transform: translate(2px, -1px); }
+            95% { transform: translate(0); }
+            100% { transform: translate(0); }
+        }
+
+        .tagline {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .stat-number {
+            color: var(--neon-cyan);
+            font-size: 1.4rem;
+            font-weight: 700;
+            text-shadow: 0 0 10px rgba(0,240,255,0.3);
+        }
+
+        /* Admin button in hero */
+        .admin-btn {
+            position: absolute;
+            top: 1.2rem;
+            right: 1.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 1rem;
+            background: rgba(191,64,255,0.08);
+            border: 1px solid rgba(191,64,255,0.3);
+            border-radius: 8px;
+            color: var(--neon-purple);
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-family: var(--font-body);
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        .admin-btn:hover {
+            background: rgba(191,64,255,0.15);
+            box-shadow: 0 0 16px rgba(191,64,255,0.2);
+        }
+
+        .admin-btn svg { width: 16px; height: 16px; }
+
+        /* ========== TOOLBAR ========== */
+        .toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 14, 23, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 1.5rem;
+        }
+
+        .toolbar-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1 1 300px;
+            position: relative;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.85rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 2.5rem 0.75rem 2.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-family: var(--font-body);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .search-box input::placeholder { color: var(--text-muted); }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 0 3px rgba(0,240,255,0.15);
+        }
+
+        .clear-btn {
+            position: absolute;
+            right: 0.6rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            display: none;
+            line-height: 1;
+        }
+
+        .clear-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+        .clear-btn.visible { display: block; }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .filter-group label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .filter-group select {
+            appearance: none;
+            -webkit-appearance: none;
+            padding: 0.7rem 2.5rem 0.7rem 1rem;
+            background: var(--bg-tertiary);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: var(--font-body);
+            cursor: pointer;
+            min-width: 180px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .filter-group select:focus {
+            outline: none;
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 0 3px rgba(0,240,255,0.15);
+        }
+
+        .filter-group select option {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            width: 100%;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.6rem 0.3rem 0.8rem;
+            background: rgba(0,240,255,0.08);
+            border: 1px solid rgba(0,240,255,0.2);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--neon-cyan);
+        }
+
+        .pill button {
+            background: none;
+            border: none;
+            color: var(--neon-cyan);
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            padding: 0 0.1rem;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .pill button:hover { opacity: 1; }
+
+        /* ========== RESULTS ========== */
+        .results-summary {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem 1.5rem 0;
+        }
+
+        .results-summary p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* ========== CARDS GRID ========== */
+        .cards-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--card-radius);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            transition: transform 0.2s, border-color 0.3s, box-shadow 0.3s;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 8px 32px rgba(0,240,255,0.08), 0 0 0 1px var(--border-glow);
+        }
+
+        .card.hidden { display: none; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .vendor-badge,
+        .device-badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.65rem;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+
+        .vendor-badge {
+            background: rgba(255,255,255,0.06);
+            color: var(--text-primary);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Device type badge colors are injected dynamically by JS */
+
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            flex-grow: 1;
+        }
+
+        .card-meta {
+            padding-top: 0.25rem;
+        }
+
+        .filename {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.03);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            padding: 0.7rem 1.2rem;
+            background: transparent;
+            border: 1px solid var(--neon-green);
+            border-radius: 8px;
+            color: var(--neon-green);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            font-family: var(--font-body);
+            transition: background 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+
+        .download-btn:hover {
+            background: rgba(57,255,20,0.1);
+            box-shadow: 0 0 16px rgba(57,255,20,0.2);
+        }
+
+        .download-btn svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        /* ========== NO RESULTS ========== */
+        .no-results {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 1.5rem;
+            text-align: center;
+            gap: 1rem;
+        }
+
+        .no-results svg {
+            width: 64px;
+            height: 64px;
+            color: var(--text-muted);
+            opacity: 0.5;
+        }
+
+        .no-results h3 {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }
+
+        .no-results p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* ========== ADMIN MODAL ========== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 560px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px var(--border-glow);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header h2 {
+            font-size: 1.15rem;
+            color: var(--neon-purple);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .modal-header h2 svg { width: 20px; height: 20px; }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.2rem;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover { color: var(--text-primary); }
+
+        .modal-body { padding: 1.5rem; }
+
+        /* Login step */
+        .auth-step { display: block; }
+        .auth-step.hidden { display: none; }
+        .upload-step { display: none; }
+        .upload-step.active { display: block; }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: var(--font-body);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 70px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--neon-purple);
+            box-shadow: 0 0 0 3px rgba(191,64,255,0.15);
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder { color: var(--text-muted); }
+
+        .form-group select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            cursor: pointer;
+        }
+
+        .form-group select option {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .form-group .hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.3rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* File drop zone */
+        .file-drop {
+            border: 2px dashed var(--border-color);
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .file-drop:hover,
+        .file-drop.dragover {
+            border-color: var(--neon-purple);
+            background: rgba(191,64,255,0.05);
+        }
+
+        .file-drop.has-file {
+            border-color: var(--neon-green);
+            background: rgba(57,255,20,0.03);
+        }
+
+        .file-drop svg {
+            width: 36px;
+            height: 36px;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .file-drop.has-file svg { color: var(--neon-green); }
+
+        .file-drop p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .file-drop .file-name {
+            color: var(--neon-green);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            margin-top: 0.3rem;
+        }
+
+        .file-drop input[type="file"] { display: none; }
+
+        /* Buttons in modal */
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 0.8rem 1.5rem;
+            background: rgba(191,64,255,0.12);
+            border: 1px solid var(--neon-purple);
+            border-radius: 8px;
+            color: var(--neon-purple);
+            font-weight: 600;
+            font-size: 0.95rem;
+            font-family: var(--font-body);
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: rgba(191,64,255,0.2);
+            box-shadow: 0 0 20px rgba(191,64,255,0.2);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-primary:disabled:hover { background: rgba(191,64,255,0.12); }
+
+        .btn-upload {
+            background: rgba(57,255,20,0.08);
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+        }
+
+        .btn-upload:hover {
+            background: rgba(57,255,20,0.15);
+            box-shadow: 0 0 20px rgba(57,255,20,0.2);
+        }
+
+        .btn-upload:disabled:hover { background: rgba(57,255,20,0.08); }
+
+        /* Auth status messages */
+        .auth-msg {
+            padding: 0.7rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .auth-msg.error {
+            display: block;
+            background: rgba(255,45,120,0.1);
+            border: 1px solid rgba(255,45,120,0.3);
+            color: var(--neon-pink);
+        }
+
+        .auth-msg.success {
+            display: block;
+            background: rgba(57,255,20,0.08);
+            border: 1px solid rgba(57,255,20,0.3);
+            color: var(--neon-green);
+        }
+
+        .auth-msg.info {
+            display: block;
+            background: rgba(0,240,255,0.08);
+            border: 1px solid rgba(0,240,255,0.2);
+            color: var(--neon-cyan);
+        }
+
+        /* Authenticated badge in header */
+        .auth-badge {
+            display: none;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.75rem;
+            color: var(--neon-green);
+            margin-top: 0.3rem;
+        }
+
+        .auth-badge.visible { display: inline-flex; }
+        .auth-badge svg { width: 14px; height: 14px; }
+
+        /* Upload progress */
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            margin-top: 1rem;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar.active { display: block; }
+
+        .progress-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--neon-purple), var(--neon-cyan));
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Separator */
+        .separator {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .separator::before,
+        .separator::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        /* ========== FOOTER ========== */
+        .footer {
+            text-align: center;
+            padding: 2rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .footer p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .footer-note {
+            margin-top: 0.5rem;
+            font-size: 0.8rem !important;
+            color: var(--text-muted);
+            opacity: 0.7;
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 768px) {
+            .toolbar-inner { flex-direction: column; align-items: stretch; }
+            .search-box { flex-basis: 100%; }
+            .filter-group select { width: 100%; min-width: unset; }
+            .cards-container { grid-template-columns: 1fr; padding: 1rem; }
+            .hero { padding: 2rem 1rem 1.5rem; }
+            .admin-btn { position: static; margin-top: 1rem; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 480px) {
+            .stats { flex-direction: column; gap: 0.5rem; }
+            .card { padding: 1rem; }
+            .card-header { flex-direction: column; align-items: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .glitch, .glitch::before, .glitch::after { animation: none; }
+            .card { animation: none; transition: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== HERO ===== -->
+    <header class="hero">
+        <button class="admin-btn" id="adminBtn" title="Admin Upload Panel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z"/>
+            </svg>
+            Admin Upload
+        </button>
+        <div class="hero-content">
+            <h1 class="glitch" data-text="SIEM Script Hub">SIEM Script Hub</h1>
+            <p class="tagline">Open-source SIEM integration scripts for log collection &amp; syslog forwarding</p>
+            <div class="stats">
+                <span class="stat"><span class="stat-number" id="scriptCount">12</span> Scripts</span>
+                <span class="stat"><span class="stat-number" id="vendorCount">11</span> Vendors</span>
+                <span class="stat"><span class="stat-number" id="categoryCount">7</span> Categories</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== TOOLBAR ===== -->
+    <section class="toolbar">
+        <div class="toolbar-inner">
+            <div class="search-box">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search scripts, vendors, products..." autocomplete="off">
+                <button id="clearSearch" class="clear-btn" title="Clear search">&times;</button>
+            </div>
+            <div class="filter-group">
+                <label for="vendorFilter">Vendor</label>
+                <select id="vendorFilter">
+                    <option value="all">All Vendors</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="deviceFilter">Device Type</label>
+                <select id="deviceFilter">
+                    <option value="all">All Device Types</option>
+                </select>
+            </div>
+            <div class="active-filters" id="activeFilters"></div>
+        </div>
+    </section>
+
+    <!-- ===== RESULTS SUMMARY ===== -->
+    <section class="results-summary">
+        <p id="resultsText">Showing 12 of 12 scripts</p>
+    </section>
+
+    <!-- ===== CARDS GRID ===== -->
+    <section class="cards-container" id="cardsContainer"></section>
+
+    <!-- ===== NO RESULTS ===== -->
+    <div class="no-results" id="noResults">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="8" y1="8" x2="14" y2="14"></line>
+            <line x1="14" y1="8" x2="8" y2="14"></line>
+        </svg>
+        <h3>No scripts found</h3>
+        <p>Try adjusting your search or filters</p>
+    </div>
+
+    <!-- ===== ADMIN MODAL ===== -->
+    <div class="modal-overlay" id="adminModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Admin Upload Panel
+                </h2>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+
+                <!-- STEP 1: Password Authentication -->
+                <div class="auth-step" id="authStep">
+                    <div class="auth-msg" id="authMsg"></div>
+                    <div class="form-group">
+                        <label for="adminPassword">Admin Password</label>
+                        <input type="password" id="adminPassword" placeholder="Enter admin password" autocomplete="off">
+                    </div>
+                    <button class="btn-primary" id="authBtn">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z"/>
+                        </svg>
+                        Authenticate
+                    </button>
+                </div>
+
+                <!-- STEP 2: Upload Form (shown after password auth) -->
+                <div class="upload-step" id="uploadStep">
+                    <div class="auth-msg" id="uploadMsg"></div>
+
+                    <!-- GitHub PAT -->
+                    <div class="form-group">
+                        <label for="githubPat">GitHub Personal Access Token</label>
+                        <input type="password" id="githubPat" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+                        <p class="hint">Required for uploading to the repository. Token needs "repo" scope. Never stored.</p>
+                    </div>
+
+                    <div class="separator">Script Details</div>
+
+                    <!-- File Upload -->
+                    <div class="form-group">
+                        <label>Script File</label>
+                        <div class="file-drop" id="fileDrop">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            <p>Drag &amp; drop your script file here or <strong>click to browse</strong></p>
+                            <div class="file-name" id="fileName"></div>
+                            <input type="file" id="fileInput" accept=".py,.txt,.sh,.ps1,.rb,.pl,.js">
+                        </div>
+                    </div>
+
+                    <!-- Vendor & Product -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="uploadVendor">Vendor</label>
+                            <input type="text" id="uploadVendor" placeholder="e.g., Palo Alto" list="vendorSuggestions">
+                            <datalist id="vendorSuggestions"></datalist>
+                        </div>
+                        <div class="form-group">
+                            <label for="uploadProduct">Product Name</label>
+                            <input type="text" id="uploadProduct" placeholder="e.g., Cortex XDR">
+                        </div>
+                    </div>
+
+                    <!-- Device Type -->
+                    <div class="form-group">
+                        <label for="uploadDeviceType">Device Type</label>
+                        <input type="text" id="uploadDeviceType" placeholder="e.g., Endpoint Security" list="deviceSuggestions">
+                        <datalist id="deviceSuggestions"></datalist>
+                        <p class="hint">Use existing category or type a new one</p>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group">
+                        <label for="uploadDescription">Description</label>
+                        <textarea id="uploadDescription" placeholder="Brief description of what the script does..."></textarea>
+                    </div>
+
+                    <!-- Upload Button -->
+                    <button class="btn-primary btn-upload" id="uploadBtn" disabled>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Script to Repository
+                    </button>
+
+                    <div class="progress-bar" id="progressBar">
+                        <div class="fill" id="progressFill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+        <p>&copy; 2025 SIEM Script Hub &mdash; Built for the security community</p>
+        <p class="footer-note">Scripts are provided as-is. Review and configure credentials before use in production.</p>
+    </footer>
+
+<script>
+/*
+ * =============================================
+ *  CONFIGURATION - Change these values
+ * =============================================
+ */
+
+// Admin password SHA-256 hash.
+// To generate your hash, open browser console and run:
+//   hashPassword('YourPassword').then(h => console.log(h))
+// Then paste the result below.
+const ADMIN_PASSWORD_HASH = ''; // SET YOUR PASSWORD HASH HERE (see instructions above)
+
+// GitHub repository details
+const GITHUB_OWNER = 'bharathreddy-m';
+const GITHUB_REPO  = 'siem-script-hub';
+const GITHUB_BRANCH = 'main';
+
+/*
+ * =============================================
+ *  HOW TO ADD A NEW SCRIPT MANUALLY:
+ *  1. Drop your .py/.txt file into the scripts/ folder
+ *  2. Open scripts.json and add a new entry
+ *  3. That's it! The website auto-updates.
+ *
+ *  OR use the Admin Upload button (top-right)
+ *  to upload directly from the browser.
+ * =============================================
+ */
+
+let SCRIPTS = [];
+let isAuthenticated = false;
+
+// ========== BADGE COLOR PALETTE ==========
+const BADGE_COLORS = [
+    { bg: 'rgba(0,240,255,0.1)',   text: '#00f0ff', border: 'rgba(0,240,255,0.3)' },
+    { bg: 'rgba(255,45,120,0.1)',  text: '#ff2d78', border: 'rgba(255,45,120,0.3)' },
+    { bg: 'rgba(255,107,53,0.1)',  text: '#ff6b35', border: 'rgba(255,107,53,0.3)' },
+    { bg: 'rgba(191,64,255,0.1)',  text: '#bf40ff', border: 'rgba(191,64,255,0.3)' },
+    { bg: 'rgba(59,130,246,0.1)',  text: '#3b82f6', border: 'rgba(59,130,246,0.3)' },
+    { bg: 'rgba(168,85,247,0.1)',  text: '#a855f7', border: 'rgba(168,85,247,0.3)' },
+    { bg: 'rgba(96,165,250,0.1)',  text: '#60a5fa', border: 'rgba(96,165,250,0.3)' },
+    { bg: 'rgba(34,197,94,0.1)',   text: '#22c55e', border: 'rgba(34,197,94,0.3)' },
+    { bg: 'rgba(250,204,21,0.1)',  text: '#facc15', border: 'rgba(250,204,21,0.3)' },
+    { bg: 'rgba(244,63,94,0.1)',   text: '#f43f5e', border: 'rgba(244,63,94,0.3)' },
+];
+
+// ========== SVG ICONS ==========
+const DOWNLOAD_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+
+// ========== PASSWORD HASHING ==========
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ========== INITIALIZATION ==========
+document.addEventListener('DOMContentLoaded', () => {
+    fetch('scripts.json')
+        .then(res => res.json())
+        .then(data => {
+            SCRIPTS = data;
+            injectBadgeStyles();
+            populateFilters();
+            renderCards();
+            bindEvents();
+            updateStats();
+            bindAdminEvents();
+        })
+        .catch(() => {
+            document.getElementById('cardsContainer').innerHTML =
+                '<p style="color:#ff6b35;text-align:center;padding:2rem;">Failed to load scripts.json. Make sure the file exists.</p>';
+            bindAdminEvents();
+        });
+});
+
+function updateStats() {
+    const vendors = new Set(SCRIPTS.map(s => s.vendor));
+    const devices = new Set(SCRIPTS.map(s => s.deviceType));
+    document.getElementById('scriptCount').textContent = SCRIPTS.length;
+    document.getElementById('vendorCount').textContent = vendors.size;
+    document.getElementById('categoryCount').textContent = devices.size;
+}
+
+function toClassName(deviceType) {
+    return deviceType.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '');
+}
+
+function injectBadgeStyles() {
+    const deviceTypes = [...new Set(SCRIPTS.map(s => s.deviceType))].sort();
+    let css = '';
+    deviceTypes.forEach((dt, i) => {
+        const color = BADGE_COLORS[i % BADGE_COLORS.length];
+        const cls = toClassName(dt);
+        css += `.device-badge.${cls}{background:${color.bg};color:${color.text};border:1px solid ${color.border}}\n`;
+    });
+    const style = document.createElement('style');
+    style.textContent = css;
+    document.head.appendChild(style);
+}
+
+function populateFilters() {
+    const vendors = [...new Set(SCRIPTS.map(s => s.vendor))].sort();
+    const devices = [...new Set(SCRIPTS.map(s => s.deviceType))].sort();
+
+    const vendorSelect = document.getElementById('vendorFilter');
+    const deviceSelect = document.getElementById('deviceFilter');
+
+    // Clear existing options (except "All")
+    vendorSelect.innerHTML = '<option value="all">All Vendors</option>';
+    deviceSelect.innerHTML = '<option value="all">All Device Types</option>';
+
+    vendors.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v;
+        vendorSelect.appendChild(opt);
+    });
+
+    devices.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        deviceSelect.appendChild(opt);
+    });
+
+    // Also populate upload form datalists
+    const vendorSuggestions = document.getElementById('vendorSuggestions');
+    const deviceSuggestions = document.getElementById('deviceSuggestions');
+    vendorSuggestions.innerHTML = vendors.map(v => `<option value="${v}">`).join('');
+    deviceSuggestions.innerHTML = devices.map(d => `<option value="${d}">`).join('');
+}
+
+function buildSearchString(script) {
+    return [script.file, script.vendor, script.product, script.deviceType, script.description]
+        .join(' ').toLowerCase();
+}
+
+function renderCards() {
+    const container = document.getElementById('cardsContainer');
+    container.innerHTML = SCRIPTS.map(script => {
+        const deviceClass = toClassName(script.deviceType);
+        const searchStr = buildSearchString(script);
+        return `
+        <article class="card" data-vendor="${script.vendor}" data-device="${script.deviceType}" data-search="${searchStr}">
+            <div class="card-header">
+                <span class="vendor-badge">${script.vendor}</span>
+                <span class="device-badge ${deviceClass}">${script.deviceType}</span>
+            </div>
+            <h3 class="card-title">${script.product}</h3>
+            <p class="card-description">${script.description}</p>
+            <div class="card-meta">
+                <span class="filename">${script.file}</span>
+            </div>
+            <a href="scripts/${script.file}" download="${script.file}" class="download-btn">
+                ${DOWNLOAD_ICON}
+                Download Script
+            </a>
+        </article>`;
+    }).join('');
+}
+
+function applyFilters() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+    const vendorValue = document.getElementById('vendorFilter').value;
+    const deviceValue = document.getElementById('deviceFilter').value;
+    const cards = document.querySelectorAll('.card');
+    let visibleCount = 0;
+
+    const clearBtn = document.getElementById('clearSearch');
+    clearBtn.classList.toggle('visible', searchTerm.length > 0);
+
+    cards.forEach(card => {
+        const matchesSearch = !searchTerm || card.dataset.search.includes(searchTerm);
+        const matchesVendor = vendorValue === 'all' || card.dataset.vendor === vendorValue;
+        const matchesDevice = deviceValue === 'all' || card.dataset.device === deviceValue;
+        const isVisible = matchesSearch && matchesVendor && matchesDevice;
+
+        card.classList.toggle('hidden', !isVisible);
+        if (isVisible) visibleCount++;
+    });
+
+    document.getElementById('resultsText').textContent =
+        `Showing ${visibleCount} of ${SCRIPTS.length} scripts`;
+
+    document.getElementById('noResults').style.display = visibleCount === 0 ? 'flex' : 'none';
+    document.getElementById('cardsContainer').style.display = visibleCount === 0 ? 'none' : 'grid';
+
+    updateFilterPills(searchTerm, vendorValue, deviceValue);
+}
+
+function updateFilterPills(search, vendor, device) {
+    const container = document.getElementById('activeFilters');
+    let pills = '';
+    if (search) {
+        pills += `<span class="pill">Search: "${search}" <button onclick="clearFilter('search')">&times;</button></span>`;
+    }
+    if (vendor !== 'all') {
+        pills += `<span class="pill">Vendor: ${vendor} <button onclick="clearFilter('vendor')">&times;</button></span>`;
+    }
+    if (device !== 'all') {
+        pills += `<span class="pill">Device: ${device} <button onclick="clearFilter('device')">&times;</button></span>`;
+    }
+    container.innerHTML = pills;
+}
+
+function clearFilter(type) {
+    if (type === 'search') document.getElementById('searchInput').value = '';
+    if (type === 'vendor') document.getElementById('vendorFilter').value = 'all';
+    if (type === 'device') document.getElementById('deviceFilter').value = 'all';
+    applyFilters();
+}
+
+function bindEvents() {
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
+    document.getElementById('vendorFilter').addEventListener('change', applyFilters);
+    document.getElementById('deviceFilter').addEventListener('change', applyFilters);
+    document.getElementById('clearSearch').addEventListener('click', () => {
+        document.getElementById('searchInput').value = '';
+        applyFilters();
+    });
+}
+
+// ==========================================
+//  ADMIN UPLOAD PANEL
+// ==========================================
+
+let uploadFileData = null; // { name, content (base64) }
+
+function bindAdminEvents() {
+    const modal = document.getElementById('adminModal');
+    const adminBtn = document.getElementById('adminBtn');
+    const closeBtn = document.getElementById('modalClose');
+    const authBtn = document.getElementById('authBtn');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileDrop = document.getElementById('fileDrop');
+    const fileInput = document.getElementById('fileInput');
+    const passwordInput = document.getElementById('adminPassword');
+
+    // Open modal
+    adminBtn.addEventListener('click', () => {
+        modal.classList.add('active');
+        if (isAuthenticated) {
+            showUploadStep();
+        } else {
+            showAuthStep();
+        }
+    });
+
+    // Close modal
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    // Escape key closes modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+    });
+
+    // Enter key on password field
+    passwordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') authBtn.click();
+    });
+
+    // Authenticate
+    authBtn.addEventListener('click', handleAuth);
+
+    // File drop zone
+    fileDrop.addEventListener('click', () => fileInput.click());
+
+    fileDrop.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileDrop.classList.add('dragover');
+    });
+
+    fileDrop.addEventListener('dragleave', () => {
+        fileDrop.classList.remove('dragover');
+    });
+
+    fileDrop.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileDrop.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+            handleFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFile(e.target.files[0]);
+        }
+    });
+
+    // Upload button
+    uploadBtn.addEventListener('click', handleUpload);
+
+    // Validate form on input
+    const formInputs = ['githubPat', 'uploadVendor', 'uploadProduct', 'uploadDeviceType', 'uploadDescription'];
+    formInputs.forEach(id => {
+        document.getElementById(id).addEventListener('input', validateForm);
+    });
+}
+
+function closeModal() {
+    document.getElementById('adminModal').classList.remove('active');
+}
+
+function showAuthStep() {
+    document.getElementById('authStep').classList.remove('hidden');
+    document.getElementById('uploadStep').classList.remove('active');
+    document.getElementById('authMsg').className = 'auth-msg';
+    document.getElementById('adminPassword').value = '';
+    document.getElementById('adminPassword').focus();
+}
+
+function showUploadStep() {
+    document.getElementById('authStep').classList.add('hidden');
+    document.getElementById('uploadStep').classList.add('active');
+    document.getElementById('uploadMsg').className = 'auth-msg';
+}
+
+async function handleAuth() {
+    const password = document.getElementById('adminPassword').value;
+    const msgEl = document.getElementById('authMsg');
+
+    if (!password) {
+        msgEl.className = 'auth-msg error';
+        msgEl.textContent = 'Please enter the admin password.';
+        return;
+    }
+
+    const hash = await hashPassword(password);
+
+    // If no hash is configured, accept any password (first-time setup mode)
+    if (ADMIN_PASSWORD_HASH === '') {
+        msgEl.className = 'auth-msg info';
+        msgEl.innerHTML = 'No password hash configured. Running in setup mode.<br><br>' +
+            'Your password hash is:<br><code style="word-break:break-all;font-size:0.8rem;color:var(--neon-cyan)">' + hash + '</code><br><br>' +
+            'Copy this hash and set it as <code>ADMIN_PASSWORD_HASH</code> in index.html to secure the panel.<br><br>Granting access for this session...';
+        setTimeout(() => {
+            isAuthenticated = true;
+            showUploadStep();
+        }, 2000);
+        return;
+    }
+
+    if (hash === ADMIN_PASSWORD_HASH) {
+        isAuthenticated = true;
+        showUploadStep();
+    } else {
+        msgEl.className = 'auth-msg error';
+        msgEl.textContent = 'Incorrect password. Access denied.';
+        document.getElementById('adminPassword').value = '';
+        document.getElementById('adminPassword').focus();
+    }
+}
+
+function handleFile(file) {
+    const fileDrop = document.getElementById('fileDrop');
+    const fileNameEl = document.getElementById('fileName');
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        // Store base64 content (strip the data URL prefix)
+        const base64 = e.target.result.split(',')[1];
+        uploadFileData = { name: file.name, content: base64 };
+        fileDrop.classList.add('has-file');
+        fileNameEl.textContent = file.name;
+        validateForm();
+    };
+    reader.readAsDataURL(file);
+}
+
+function validateForm() {
+    const pat = document.getElementById('githubPat').value.trim();
+    const vendor = document.getElementById('uploadVendor').value.trim();
+    const product = document.getElementById('uploadProduct').value.trim();
+    const deviceType = document.getElementById('uploadDeviceType').value.trim();
+    const description = document.getElementById('uploadDescription').value.trim();
+
+    const isValid = pat && vendor && product && deviceType && description && uploadFileData;
+    document.getElementById('uploadBtn').disabled = !isValid;
+}
+
+function setProgress(percent) {
+    const bar = document.getElementById('progressBar');
+    const fill = document.getElementById('progressFill');
+    bar.classList.add('active');
+    fill.style.width = percent + '%';
+}
+
+function showUploadMsg(type, text) {
+    const msg = document.getElementById('uploadMsg');
+    msg.className = 'auth-msg ' + type;
+    msg.innerHTML = text;
+}
+
+async function handleUpload() {
+    const pat = document.getElementById('githubPat').value.trim();
+    const vendor = document.getElementById('uploadVendor').value.trim();
+    const product = document.getElementById('uploadProduct').value.trim();
+    const deviceType = document.getElementById('uploadDeviceType').value.trim();
+    const description = document.getElementById('uploadDescription').value.trim();
+    const uploadBtn = document.getElementById('uploadBtn');
+
+    if (!uploadFileData) return;
+
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Uploading...';
+    showUploadMsg('info', 'Starting upload...');
+
+    const headers = {
+        'Authorization': 'token ' + pat,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+    };
+
+    const apiBase = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO;
+
+    try {
+        // Step 1: Verify PAT is valid
+        setProgress(10);
+        showUploadMsg('info', 'Verifying GitHub token...');
+
+        const userRes = await fetch('https://api.github.com/user', { headers });
+        if (!userRes.ok) {
+            throw new Error('Invalid GitHub token. Make sure it has "repo" scope.');
+        }
+        const userData = await userRes.json();
+
+        // Step 2: Upload the script file
+        setProgress(30);
+        showUploadMsg('info', 'Uploading script file: ' + uploadFileData.name + '...');
+
+        const scriptPath = 'scripts/' + uploadFileData.name;
+        const uploadRes = await fetch(apiBase + '/contents/' + scriptPath, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({
+                message: 'Add script: ' + uploadFileData.name + ' (' + vendor + ' - ' + product + ')',
+                content: uploadFileData.content,
+                branch: GITHUB_BRANCH
+            })
+        });
+
+        if (!uploadRes.ok) {
+            const err = await uploadRes.json();
+            if (err.message && err.message.includes('already exists')) {
+                throw new Error('A file named "' + uploadFileData.name + '" already exists in the repository.');
+            }
+            throw new Error('Failed to upload file: ' + (err.message || uploadRes.status));
+        }
+
+        // Step 3: Get current scripts.json
+        setProgress(60);
+        showUploadMsg('info', 'Updating scripts.json...');
+
+        const jsonRes = await fetch(apiBase + '/contents/scripts.json?ref=' + GITHUB_BRANCH, { headers });
+        if (!jsonRes.ok) {
+            throw new Error('Failed to fetch scripts.json from repository.');
+        }
+        const jsonData = await jsonRes.json();
+        const currentContent = JSON.parse(atob(jsonData.content));
+
+        // Step 4: Add new entry and update scripts.json
+        setProgress(80);
+
+        const newEntry = {
+            file: uploadFileData.name,
+            vendor: vendor,
+            product: product,
+            deviceType: deviceType,
+            description: description
+        };
+        currentContent.push(newEntry);
+
+        const updatedJson = JSON.stringify(currentContent, null, 4) + '\n';
+        const updatedBase64 = btoa(unescape(encodeURIComponent(updatedJson)));
+
+        const updateRes = await fetch(apiBase + '/contents/scripts.json', {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({
+                message: 'Add ' + product + ' (' + vendor + ') to scripts.json',
+                content: updatedBase64,
+                sha: jsonData.sha,
+                branch: GITHUB_BRANCH
+            })
+        });
+
+        if (!updateRes.ok) {
+            throw new Error('Failed to update scripts.json.');
+        }
+
+        // Step 5: Success!
+        setProgress(100);
+        showUploadMsg('success',
+            'Script uploaded successfully by <strong>' + userData.login + '</strong>!<br>' +
+            'File: <code>' + uploadFileData.name + '</code><br>' +
+            'GitHub Pages will rebuild in ~1-2 minutes.'
+        );
+
+        // Add to local state immediately so it shows on the page
+        SCRIPTS.push(newEntry);
+        injectBadgeStyles();
+        populateFilters();
+        renderCards();
+        updateStats();
+        applyFilters();
+
+        // Reset form
+        resetUploadForm();
+
+    } catch (err) {
+        showUploadMsg('error', err.message);
+        setProgress(0);
+        document.getElementById('progressBar').classList.remove('active');
+    }
+
+    uploadBtn.disabled = false;
+    uploadBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload Script to Repository';
+    validateForm();
+}
+
+function resetUploadForm() {
+    uploadFileData = null;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('fileDrop').classList.remove('has-file');
+    document.getElementById('fileName').textContent = '';
+    document.getElementById('uploadVendor').value = '';
+    document.getElementById('uploadProduct').value = '';
+    document.getElementById('uploadDeviceType').value = '';
+    document.getElementById('uploadDescription').value = '';
+    document.getElementById('uploadBtn').disabled = true;
+}
+</script>
+
+</body>
+</html>

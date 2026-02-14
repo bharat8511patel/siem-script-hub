@@ -1,0 +1,86 @@
+[
+    {
+        "file": "Final_Scapy_cloudwatch.txt",
+        "vendor": "AWS",
+        "product": "CloudWatch VPC Logs",
+        "deviceType": "Cloud/SIEM",
+        "description": "Fetches AWS CloudWatch VPC logs and forwards to syslog server with spoofed source IP using Scapy."
+    },
+    {
+        "file": "TCS_Cloudwatch.txt",
+        "vendor": "AWS",
+        "product": "CloudWatch VPC Logs (TCS)",
+        "deviceType": "Cloud/SIEM",
+        "description": "Fetches AWS CloudWatch VPC logs (TCS instance) and forwards to syslog server."
+    },
+    {
+        "file": "gsuit_Final.py",
+        "vendor": "Google",
+        "product": "Google Workspace",
+        "deviceType": "IAM/Cloud Services",
+        "description": "Pulls Google Workspace audit logs and sends to FortiSIEM-compatible syslog server."
+    },
+    {
+        "file": "iraje_fetch_api.py",
+        "vendor": "Iraje",
+        "product": "Iraje PAM",
+        "deviceType": "IAM/PAM",
+        "description": "Fetches privileged access management events from Iraje API and forwards to SIEM with deduplication."
+    },
+    {
+        "file": "newnetskope.py",
+        "vendor": "Netskope",
+        "product": "Netskope",
+        "deviceType": "Cloud/Network Security",
+        "description": "Collects Netskope alert, application, and audit events and sends to syslog server."
+    },
+    {
+        "file": "o365_logs.py",
+        "vendor": "Microsoft",
+        "product": "Office 365",
+        "deviceType": "Cloud/Email Security",
+        "description": "Extracts Office 365 activity audit logs via MSAL authentication and sends to syslog server."
+    },
+    {
+        "file": "rediff.py",
+        "vendor": "Rediff",
+        "product": "RediffmailPro",
+        "deviceType": "Email Security",
+        "description": "Fetches RediffmailPro email logs from last 15 minutes and forwards to syslog with optional spoofing."
+    },
+    {
+        "file": "sentinel.py",
+        "vendor": "SentinelOne",
+        "product": "SentinelOne",
+        "deviceType": "Endpoint Security",
+        "description": "Collects SentinelOne activities, threats, and cloud-detection alerts and sends to syslog."
+    },
+    {
+        "file": "shield_Arvind.py",
+        "vendor": "TechOwl",
+        "product": "TechOwlShield",
+        "deviceType": "Endpoint Security",
+        "description": "Fetches TechOwlShield security alerts and forwards to syslog with spoofed source IP using Scapy."
+    },
+    {
+        "file": "UPDATED_TREND.py",
+        "vendor": "Trend Micro",
+        "product": "Trend Vision One",
+        "deviceType": "Endpoint Security/XDR",
+        "description": "Retrieves Trend Vision One XDR API events and forwards to syslog with source IP spoofing."
+    },
+    {
+        "file": "WatchGuard_EPDR_UPDATED.py",
+        "vendor": "WatchGuard",
+        "product": "WatchGuard EPDR",
+        "deviceType": "Endpoint Security",
+        "description": "Pulls WatchGuard Endpoint Detection and Response security events from all endpoints to syslog."
+    },
+    {
+        "file": "Zoho_Mail.py",
+        "vendor": "Zoho",
+        "product": "Zoho Mail",
+        "deviceType": "Email Security",
+        "description": "Exports Zoho Mail logs to syslog with optional UDP source IP spoofing using Scapy."
+    }
+]

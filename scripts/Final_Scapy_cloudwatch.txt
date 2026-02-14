@@ -1,0 +1,288 @@
+import boto3
+import json
+import sys
+import os
+import socket
+from datetime import datetime, timezone, timedelta
+
+# ──── Added for source IP spoofing (same style as Trend Micro script) ───────
+try:
+    from scapy.all import IP, UDP, send, RandShort
+except ImportError:
+    print("ERROR: scapy is required for IP spoofing")
+    print("Install it with: pip install scapy")
+    sys.exit(1)
+
+# === Make checkpoint file location independent of current working directory ===
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CHECKPOINT_FILE = os.path.join(SCRIPT_DIR, "last_pull_timestamp.txt")
+
+# AWS Config
+LOG_GROUP_NAME = "VPC-Logs"         # Enter Log Group Name
+REGION = "eu-north-1"               # Enter Region
+ACCOUNT_NAME = "dontripkhvjs"       # Enter Account Name
+PH_CUST_ID = 2209
+
+# Syslog Config
+SYSLOG_HOST = "192.168.10.233"           # ← change to your real syslog server IP/Collector IP
+SYSLOG_PORT = 514
+SYSLOG_PROTO = "udp"                # must be udp for spoofing
+
+# Spoofed source IP — this is what the syslog server / SIEM should see as source IP
+SPOOF_SOURCE_IP = "10.10.10.10"
+
+# Pull Config
+INITIAL_PULL_MINUTES = 10
+
+def get_client():
+    return boto3.client(
+        "logs",
+        region_name=REGION,
+        aws_access_key_id="YOUR_AWS_ACCESS_KEY_ID_HERE",       # Enter Key ID
+        aws_secret_access_key="YOUR_AWS_SECRET_ACCESS_KEY_HERE",   # Enter Secret Value
+    )
+
+def get_collector_info():
+    try:
+        hostname = socket.gethostname()
+        ip = socket.gethostbyname(hostname)
+    except socket.error:
+        hostname = "unknown"
+        ip = "127.0.0.1"
+    return ip, hostname
+
+def format_syslog_message(event_message, stream_name, group_name):
+    rept_ip = SPOOF_SOURCE_IP
+    rept_name = "CloudWatch-Logs"
+
+    payload = {
+        "accountName": ACCOUNT_NAME,
+        "awsRegion": REGION,
+        "groupName": group_name,
+        "phCustId": PH_CUST_ID,
+        "reptDevIpAddr": rept_ip,
+        "reptDevName": rept_name,
+        "streamName": stream_name,
+    }
+    if isinstance(event_message, dict):
+        payload.update(event_message)
+    else:
+        payload["raw_event"] = event_message
+
+    return "[AWS_CLOUDWATCH_EVENT_DATA] = " + json.dumps(payload, separators=(",", ":"))
+
+def send_syslog(message):
+    """Send syslog message with spoofed source IP using Scapy (UDP only)"""
+    syslog_msg = f"<134>{message}\n"
+
+    if SYSLOG_PROTO.lower() != "udp":
+        print("Warning: Spoofing only works with UDP. Using normal socket.")
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.sendto(syslog_msg.encode("utf-8"), (SYSLOG_HOST, SYSLOG_PORT))
+            sock.close()
+        except Exception as e:
+            print(f"Normal UDP send failed: {e}")
+        return
+
+    try:
+        packet = (
+            IP(src=SPOOF_SOURCE_IP, dst=SYSLOG_HOST) /
+            UDP(sport=RandShort(), dport=SYSLOG_PORT) /
+            syslog_msg.encode("utf-8")
+        )
+        send(packet, verbose=0)
+    except Exception as e:
+        print(f"[SPOOFED SYSLOG ERROR] {e}")
+        # Optional fallback (non-spoofed)
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.sendto(syslog_msg.encode("utf-8"), (SYSLOG_HOST, SYSLOG_PORT))
+            sock.close()
+        except Exception as fb_e:
+            print(f"[FALLBACK FAILED] {fb_e}")
+
+def load_checkpoint():
+    if os.path.exists(CHECKPOINT_FILE):
+        with open(CHECKPOINT_FILE, "r") as f:
+            ts = f.read().strip()
+            if ts:
+                return datetime.fromisoformat(ts)
+    return None
+
+def save_checkpoint(dt):
+    with open(CHECKPOINT_FILE, "w") as f:
+        f.write(dt.isoformat())
+
+def list_streams():
+    client = get_client()
+    print(f"Log streams in: {LOG_GROUP_NAME}")
+    print("=" * 80)
+    params = {
+        "logGroupName": LOG_GROUP_NAME,
+        "orderBy": "LastEventTime",
+        "descending": True,
+    }
+    total = 0
+    while True:
+        response = client.describe_log_streams(**params)
+        for stream in response["logStreams"]:
+            total += 1
+            name = stream["logStreamName"]
+            last_event = stream.get("lastEventTimestamp")
+            if last_event:
+                last_event = datetime.fromtimestamp(
+                    last_event / 1000, tz=timezone.utc
+                ).strftime("%Y-%m-%d %H:%M:%S UTC")
+            else:
+                last_event = "N/A"
+            stored_bytes = stream.get("storedBytes", 0)
+            print(f"{total:3}. {name}")
+            print(f" Last event: {last_event} | Stored bytes: {stored_bytes}")
+        next_token = response.get("nextToken")
+        if not next_token:
+            break
+        params["nextToken"] = next_token
+    print(f"\nTotal log streams: {total}")
+
+def parse_time(time_str):
+    formats = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M",
+    ]
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(time_str, fmt)
+            return dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    raise ValueError(
+        f"Invalid time format: '{time_str}'. "
+        f"Use: YYYY-MM-DD HH:MM:SS or YYYY-MM-DD HH:MM or YYYY-MM-DD"
+    )
+
+def pull_and_save(start_str=None, end_str=None):
+    client = get_client()
+    end_dt = datetime.now(timezone.utc)
+
+    if start_str and end_str:
+        start_dt = parse_time(start_str)
+        end_dt = parse_time(end_str)
+        mode = "manual"
+    elif start_str:
+        start_dt = parse_time(start_str)
+        mode = "manual"
+    else:
+        last_ts = load_checkpoint()
+        if last_ts:
+            start_dt = last_ts
+            mode = "resume"
+        else:
+            start_dt = end_dt - timedelta(minutes=INITIAL_PULL_MINUTES)
+            mode = "initial"
+
+    start_time = int(start_dt.timestamp() * 1000)
+    end_time = int(end_dt.timestamp() * 1000)
+
+    time_label = (
+        f"{start_dt.strftime('%Y-%m-%d %H:%M:%S UTC')} to "
+        f"{end_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+    )
+
+    if mode == "initial":
+        print(f"[FIRST RUN] No checkpoint found. Pulling last {INITIAL_PULL_MINUTES} minutes.")
+    elif mode == "resume":
+        print(f"[RESUME] Checkpoint found. Pulling from last run.")
+    else:
+        print(f"[MANUAL] Pulling specified time range.")
+
+    print(f"Log group: {LOG_GROUP_NAME}")
+    print(f"Time range: {time_label}")
+    print(f"Syslog target: {SYSLOG_HOST}:{SYSLOG_PORT} ({SYSLOG_PROTO.upper()})")
+    print(f"Spoofed source IP: {SPOOF_SOURCE_IP}")
+    print(f"Checkpoint file: {CHECKPOINT_FILE}")   # ← helpful for debugging
+    print("-" * 80)
+
+    params = {
+        "logGroupName": LOG_GROUP_NAME,
+        "startTime": start_time,
+        "endTime": end_time,
+        "interleaved": True,
+    }
+
+    total_events = 0
+    sent_count = 0
+    failed_count = 0
+
+    while True:
+        response = client.filter_log_events(**params)
+        for event in response["events"]:
+            total_events += 1
+            stream_name = event["logStreamName"]
+            message = event["message"].strip()
+            try:
+                parsed = json.loads(message)
+            except (json.JSONDecodeError, TypeError):
+                parsed = message
+
+            syslog_line = format_syslog_message(parsed, stream_name, LOG_GROUP_NAME)
+
+            try:
+                send_syslog(syslog_line)
+                sent_count += 1
+            except Exception as e:
+                failed_count += 1
+                if failed_count <= 3:
+                    print(f" Syslog send failed: {e}")
+
+        next_token = response.get("nextToken")
+        if not next_token:
+            break
+        params["nextToken"] = next_token
+
+    print(f"\nTotal events fetched: {total_events}")
+    print(f"Sent to syslog: {sent_count}")
+    if failed_count:
+        print(f"Failed to send: {failed_count}")
+
+    save_checkpoint(end_dt)
+    print(f"Checkpoint saved: {end_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    print(f"→ saved to: {CHECKPOINT_FILE}")
+
+def print_usage():
+    print("Usage:")
+    print(" python pull_logs.py                    → Auto pull (checkpoint or last N min)")
+    print(' python pull_logs.py "2025-02-12 04:00" → From start time to now')
+    print(' python pull_logs.py "2025-02-12 04:00" "2025-02-12 05:00" → Between two times')
+    print(" python pull_logs.py streams            → List all log streams")
+    print(" python pull_logs.py reset              → Delete checkpoint, start fresh")
+    print()
+    print(f" Initial pull window: {INITIAL_PULL_MINUTES} minutes")
+    print(f" Checkpoint file:     {CHECKPOINT_FILE}")
+    print(f" Syslog target:       {SYSLOG_HOST}:{SYSLOG_PORT} ({SYSLOG_PROTO.upper()})")
+    print(f" Spoofed source IP:   {SPOOF_SOURCE_IP}")
+
+def reset_checkpoint():
+    if os.path.exists(CHECKPOINT_FILE):
+        os.remove(CHECKPOINT_FILE)
+        print(f"Checkpoint deleted: {CHECKPOINT_FILE}")
+        print(f"Next run will pull last {INITIAL_PULL_MINUTES} minutes.")
+    else:
+        print("No checkpoint file found. Already fresh.")
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "streams":
+        list_streams()
+    elif len(sys.argv) > 1 and sys.argv[1] == "reset":
+        reset_checkpoint()
+    elif len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help", "help"):
+        print_usage()
+    elif len(sys.argv) == 3:
+        pull_and_save(sys.argv[1], sys.argv[2])
+    elif len(sys.argv) == 2:
+        pull_and_save(sys.argv[1])
+    else:
+        pull_and_save()
