@@ -17,14 +17,14 @@ from datetime import datetime, timezone, timedelta
 import requests
 
 # ---------- Config (env-first, then fallback) ----------
-ACCESS_TOKEN  = os.getenv("ZACCESS_TOKEN",  "1000.44ce4093547e1c46160c92268f20d169.8a86e17cdd8b561073a39fd0b000f4b8")
-CLIENT_ID     = os.getenv("ZCLIENT_ID",     "1000.8FVMFBL4N90R583C031WQDDUGXS6TY")
-CLIENT_SECRET = os.getenv("ZCLIENT_SECRET", "67dcd4ac099e8af732adc2a152c3123b097c9779c0")
-REFRESH_TOKEN = os.getenv("ZREFRESH_TOKEN", "1000.4c0de4a542e7a6506c27e05b5643b663.af88b4ff830949d045d8a1a3d070b68f")
+ACCESS_TOKEN  = os.getenv("ZACCESS_TOKEN",  "1000.44xxxxxxxxxxxxx0c92268f20d169.8a86e17cxxxxxxxxxxxxxx0b000f4b8")
+CLIENT_ID     = os.getenv("ZCLIENT_ID",     "1000.xxxxxxxxxxxxxxxxx")
+CLIENT_SECRET = os.getenv("ZCLIENT_SECRET", "67dcd4xxxxxxxxxxxxxxxxxxxx97c9779c0")
+REFRESH_TOKEN = os.getenv("ZREFRESH_TOKEN", "1000.4cxxxxxxxxxxxe05b5643b663.af88bxxxxxxxxxxxxx3d070b68f")
 
 MAIL_BASE     = os.getenv("ZMAIL_BASE",     "https://mail.zoho.in")
 ACCOUNTS_BASE = os.getenv("ZACCOUNTS_BASE", "https://accounts.zoho.in")
-ORG_ID        = os.getenv("ZORG_ID",        "60032878683")
+ORG_ID        = os.getenv("ZORG_ID",        "xxxxxxxxxxxxx")
 
 LOOKBACK_MINUTES   = 5   # last 5 mins
 OVERLAP_SECONDS    = 60
