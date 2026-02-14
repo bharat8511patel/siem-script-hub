@@ -70,7 +70,7 @@
         "description": "Retrieves Trend Vision One XDR API events and forwards to syslog with source IP spoofing."
     },
     {
-        "file": "WatchGuard_EPDR_UPDATED.py",
+        "file": "WatchGuard_EPDR.py",
         "vendor": "WatchGuard",
         "product": "WatchGuard EPDR",
         "deviceType": "Endpoint Security",
