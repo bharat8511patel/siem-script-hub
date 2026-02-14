@@ -28,7 +28,7 @@
         "description": "Fetches privileged access management events from Iraje API and forwards to SIEM with deduplication."
     },
     {
-        "file": "newnetskope.py",
+        "file": "netskope.py",
         "vendor": "Netskope",
         "product": "Netskope",
         "deviceType": "Cloud/Network Security",
